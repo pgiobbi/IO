@@ -4,114 +4,115 @@ Created on Wed Jan 31 15:00:22 2018
 
 @author: pierm
 
-Programma che legge facilmente file, dividendolo in varie righe e colonne
-Versione 1.6.1
+Python module that makes basic I/O operations easier
+Version 1.6.1
 
 ------------
 History log:
 v1.6.1
--readfile ritorna una lista invece che un array numpy se read_strings==True
+-IO.readfile returns a list instead of a numpy array if read_strings==True
 v1.6.0
--aggiunto a readfile la possibilita' di leggere stringhe
--writefile consente di stampare array 1d senza trasformazione esterna
--corretto bug readfile che non leggeva ultimo carattere ultima riga(str)
--aggiunto il parametro wrapevery per lettura/scrittura di matrici 3d
--aggiunta la possibilita' di creare labels automatiche per writefile
+-IO.readfile : fixed bug that wouldn't read the last character of the last line
+-IO.readfile : added read_strings to read strings
+-IO.writefile : no need to provide a 2d or 3d array
+-IO.writefile : automatic labels available
+-IO.readfile/IO.writefile : works with rank 3 arrays as well
 """
 
-def readfile(nomefile, comments = '#', float_separation = '.',
+def readfile(filename, comments = '#', float_separation = '.',
              delimiter = ' ', read_strings=False):
     """
-    Legge facilmente file input.
+    Reads input file easily.
 
     Parameters
     ----------
-    nomefile : string
-        Inserisci il nome del file dove vuoi leggere i dati e.g. "input.txt"
-        N.B. Il file deve trovarsi nella stessa directory dello script che
-        chiama il modulo IO!
+    filename : string
+        Name of the file containing data you wish to load. Provide only the
+        filename if you file is in the cwd, provide full path otherwise.
 
     comments : string, array_like, optional
-        Le righe del file che iniziano con un carattere del genere non vengono
-        considerate. N.B. Deve essere un singolo carattere!
+        Lines beginning with this character are going to be ignored.
+        It support even different comment characters, but please try to avoid it
         e.g. comments = '#; %@' oppure comments = ['#', ';', ' ', '%', '@']
 
     float_separation : string, optional
-        Carattere utilizzato per dividere cifre intere da cifre decimali
-        Se il numero e' italiano porre float_separation = ','
+        Character used to separate whole numbers from decimal numbers
+        Italians .etc., use ','
 
     delimiter : string, optional
-        Carattere utilizzato per definire inizio e fine delle varie colonne
-        A meno di scelte curiose (e.g. '%') il programma considera validi
-        soltanto (numeri,+,-,E,e). Tutto cio' che non e' di questo tipo viene
-        considerato come un delimitatore e divide automaticamente le colonne
-        e.g. Il programma divide automaticamente le colonne se trova spazi/tab,
-        quindi in realta' e' inutile specificarlo. E' importante invece se si
-        usa readfile per leggere stringhe (vedi parametro read_strings)
+        String used to separate data on the lines.
+        Unless you chose a funky delimiter (e.g. ``%``(please don't)), readfile
+        is going to ignore whatever is not [number,+,-,E,e], therefore
+        everything else is going to be treated as a delimiter and is going to
+        separate columns. It is however important if you wish to load strings
+        (see read_strings)
 
     read_strings : bool, optional
-        Se True il programma non legge numeri ma legge stringhe
+        If True, the procedure is not going to read numbers but strings instead
 
     Returns
     -------
     out : list
-        Lista (2d) che contiene i vari dati letti. rows == righe file buone
-        Se i dati sono stati scritti bene si dovrebbe avere ncols==costante
+        numpy.array() (rank=2d/3d) containing the loaded data. If data is
+        corrupted and the number of number per line is non costant then the
+        procedure will return a list instead and raise a warning. If the file
+        was created with IO.writefile there will be a comment which allows
+        IO.readfile to read even rank=3d.
 
     Examples
     --------
-    Dati da '2-Alluminio1.txt'con delimitatore decimale italiano (virgola) e
-    commenti iniziano con virgolette (")
+    Data from '2-Alluminio1.txt'con comma delimiter (``,``) and line comments
+    beginning with ``"``
 
     >>> import IO
     >>> dati = IO.readfile('2-Alluminio1.txt', comments='"', float_delimiter=',')
 
     Notes
     -----
-    Mettere IO.py nella stessa directory dei vari moduli python. Basta andare
-    sul terminal e digitare
+    Are you lazy and don't want to put IO.py in your working directory?
+    Just open the terminal and type
     >>> pip show numpy
-    Nel mio caso c:\users\pierm\anaconda2\lib\site-packages
-    Altrimenti tenere IO.py nella stessa cartella da dove si esegue lo script
-    principale
+    In my case c:\users\pierm\anaconda2\lib\site-packages
+    And put IO.py there! So you won't need to copy it in every folder
     """
 
     try:
-        with open(nomefile,"r") as f:
-            #Legge tutte le righe come stringhe e le salva in array
+        with open(filename,"r") as f:
+            #Read all file lines as string and save them in a list
             out=[]
             lettura=f.readlines()
             wrapevery=None
             j=-1
             for riga in lettura:
-                j+=1    #Per contare riga
-                #Trascura riga se il primo carattere e' un commento
+                j+=1    #Row counter
+                #Ignore line if the first character is a comment character
                 if riga[0] in comments:
-                    # Per matrici con d>2
+                    # Handle arrays with rank=3
                     if 'wrapevery' in riga:
                         wrapevery=int(riga.split('wrapevery = ')[-1].split()[0])
-                        #Attenzione, funziona solo se non si altera il file!
-                        #Con l'ultima riga evita problemi di spazi tipo da fortran
+                        #It works, but don't alter the file!
+                        #Cool way of avoiding blank characters
                     continue
                 stringa=''
                 riga_i=[]
 
                 if not read_strings:
-                    #Questa funzione legge numeri, non stringhe
+                    #Do this if your data are strings
                     for char in riga:
                         if char==float_separation:
                             if stringa=='':
                                 stringa+='0.'
                             else:
                                 stringa+='.'
-                        #legge solo numeri, +, -, E, e
+                        #Take advantage of ASCII to convert strings to float
+                        #Reading only numbers, +, -, E, e
                         elif  (ord(char)>=48 and ord(char)<=57) or ord(char)==43  \
                             or ord(char)==45  or ord(char)==69  or ord(char)==101 \
                             and char!=delimiter:
 
-                            #Due nuove righe! attenzione! Per gestire meglio errori
+                            #Error handling: ignore 'E' or 'e' if string is
+                            #still empty
                             if stringa=='' and (ord(char)==69  or ord(char)==101):
-                            #se leggo E o e con la stringa ancora vuota rifiuto
                                 continue
 
                             stringa+=char
@@ -120,18 +121,18 @@ def readfile(nomefile, comments = '#', float_separation = '.',
                                 riga_i.append(float(stringa))
                             stringa=''
 
-                    #Se gli ultimi caratteri della riga sono buoni li devo aggiungere
+                    #Add characters to string if we are at the end of the line
                     if stringa!='':
                         riga_i.append(float(stringa))
 
-                    #Salva riga nei dati se non e' vuota
+                    #Salva line in read data if it is not empty
                     if riga_i!=[]:
                         out.append(riga_i)
 
-                else:   #blocco se voglio leggere stringhe
+                else:   #Do this if you want to read strings
                     i=0
                     for char in riga:
-                        #newline e' \n ma viene contato come un solo carattere
+                        #newline is \n but it counts as a single character
                         if (char==delimiter and stringa!='') or i==len(riga)-1:
                             if stringa!='':
                                 riga_i.append(stringa)
@@ -140,53 +141,54 @@ def readfile(nomefile, comments = '#', float_separation = '.',
                             if char!=delimiter:
                                 stringa+=char
                             if j==len(lettura)-1 and i==len(riga)-1:
-                                stringa+=riga[i]  #ultima riga ultimo carattere
+                                stringa+=riga[i]  #last line, last character
                         i+=1
                     if riga_i!=[]:
                         out.append(riga_i)
 
 
-            #Controllo se numero elementi delle righe e' costante
-            lunghezze=[]
+            #Checking wheter len(line) is constant for all lines
+            lengths=[]
 
             for i in range(len(out)):
                 lun=len(out[i])
                 flag=0
-                if lunghezze==[]:
-                    lunghezze.append([lun, [i]])
+                if lengths==[]:
+                    lengths.append([lun, [i]])
                 else:
-                    for j in range(len(lunghezze)):
-                        if lunghezze[j][0]==lun:
-                            lunghezze[j][1].append(i)
+                    for j in range(len(lengths)):
+                        if lengths[j][0]==lun:
+                            lengths[j][1].append(i)
                             flag=1
                             break
                     if not flag:
-                        lunghezze.append([lun, [i]])
+                        lengths.append([lun, [i]])
 
-            if len(lunghezze)>1:
+            if len(lengths)>1:
                 print "Warning: not all lines have the same shape"
                 maximum=0
-                for i in range(len(lunghezze)):
-                    lun=len(lunghezze[i][1])
+                for i in range(len(lengths)):
+                    lun=len(lengths[i][1])
                     if lun>maximum:
                         maximum=lun
                         indice=i
                 print "Most frequent lenght : %i (%i counts) " \
-                        %(lunghezze[indice][0], maximum)
+                        %(lengths[indice][0], maximum)
                 print "Check rows : ",
-                for i in range(len(lunghezze)):
+                for i in range(len(lengths)):
                     if i!=indice:
-                        for j in range(len(lunghezze[i][1])):
-                            if j<len(lunghezze[i][1])-1:
+                        for j in range(len(lengths[i][1])):
+                            if j<len(lengths[i][1])-1:
                                 char=","
                             else:
                                 char=" "
 
-                            print "%i%c" %(lunghezze[i][1][j],char),
+                            print "%i%c" %(lengths[i][1][j],char),
                 print ""
 
 
             try:
+                #Try returning a numpy array
                 import numpy as np
                 out=np.array(out)
                 if wrapevery is not None:
@@ -196,106 +198,106 @@ def readfile(nomefile, comments = '#', float_separation = '.',
                 return out
 
             except ImportError:
+                #Return a list if numpy in not available
                 print "Could not load numpy module"
                 print "Returning data as a 2D list"
                 return out
 
     except IOError:
-         print "Could not read file: %s" %nomefile
+         print "Could not read file: %s" %filename
 
 
-def writefile(nomefile,  dati, max_char=11, decimal_places=8, delimiter='   ',
+def writefile(filename,  dati, max_char=11, decimal_places=8, delimiter='   ',
               dtype='e', mode='w', comments = '#', labels=True,
               row_comment=False, main_comment=None):
     """
-    Scrive su un file i valori di una lista/array 2d che possono poi essere
-    facilmente letti grazie alla funzione readfile
+    Writes list/np.array 2d to file that you can easily read with IO.readfile
 
     Parameters
     ---------
-    nomefile : string
-        Nome del file sul quale salvare i dati e.g. 'output.txt'
+    filename : string
+        Name of the file you want to save your data to
 
     dati : list
-        Lista 2d da scrivere su file. Non e' necessario che essa abbia sempre
-        lo stesso numero di elementi su ogni riga
+        2d list/np.array to write to file. It used to work even if number of
+        numbers per line was not constant, but numpy doesn't like that.
+        3d is supported as well thanks to wrapevery (see below)
 
     max_char : int, optional
-        Numero di cifre assegnate per la stampa di ogni elemento di dati
+        Number of allocated places for the whole number
 
     decimal_places : int, optional
-        Numero di cifre assegnate per le cifre decimali
+        Number of allocated places for decimals
 
     delimiter : char, optional
-        Delimitatore per dividere le varie colonne. Se non specificato sono
-        degli spazi
+        delimiter to separate columns. default = blanks
 
     dtype : char, optional
-        Tipo di formato dei dati. Lasciare 'e' per tipo esponenziale, 'f' per
-        float o 'i' per interi. Assumendo 1*sign, 1*intero, 1*punto, 4*per esp
-        e decimal_places*decimali abbiamo che max_char>=decimal_places+7.
-        E' stata fatta la stessa cosa con 'f' ma e' valida soltanto per (-10,10)
-        Nel caso non sia cosi' viene aumentata la dimensione di max_char
+        Data type. Choose between {'e'/'E'->exponential, 'f'->float,'i'->int}
+        Remember that in order to provide the necessary places for the e/E
+        format you need that max_char>=decimal_places+7. So the procedure is
+        going to override you parameters if you fail to do that.
+        It has been implemented for 'f' as well, but only for numbers that
+        are in (-10,10)
 
     mode : string, optional
-        Modalita' di scrittura. 'w'=write. 'a'=append. Attenzione! Non viene
-        effettuato un controllo sul carattere!
+        Write action : {'w'=write, 'a'=append}.
+        Warning! Check on character not implemented!
 
     comments : char, optional
-        Carattere con il quale iniziare commenti ad inizio file
+        Character you wish to start your comment lines with
 
     main_comment : string, optional
-        Stringa da stampare ad inizio file per descrivere brevemente i dati
+        Main comment to save at the start of the file. Nicely boxed, using
+        the comment character you provided in ``comments``
 
-    labels : list, optional {True, None}
-        Lista di stringhe da scrivere dopo main_comment per descrivere le varie
-        colonne.
-        e.g. labels=['tempo', 'velocita']
-        Nel file viene preposto il carattere comments.
-        Se si vogliono autogenerare le labels porre labels=True
+    labels : list, optional, {True, None}
+        String list (printed after ``main_comment``) to describe columns data
+        e.g. labels=['time', 'velocity']
+        This line is commented with the character ``comments``
+        Set labels=True if you want to auto generate the labels (not so smart)
 
     row_comment : bool, optional
-        Se la matrice dei dati e' quadrata stampa le labels anche all'inizio
-        di ogni riga se True. ATTENZIONE! Potrebbe essere piu' difficile
-        leggere i dati, ma non ci dovrebbero essere problemi con IO.readfile.
-        Evitare labels che contengano +,-,. e numeri
+        If data is a square matrix, it prints ``labels`` even at the start of
+        each line, with NO character ``comments`` before. Nicely formatted, and
+        as long as you don't use labels with numbers,+,- you won't have any
+        problems loading the file with IO.readfile, but not everyone uses it
+        so choose wisely!
 
     Notes
     -----
-    I dati su file sono letti sotto forma di matrice 2d e wrapevery permette
-    di leggere i dati e di trasformare la lettura in una matrice 3d.
-    E.g. si hanno delle posizioni in 2d di nplanets oggetti in funzione del
-    tempo. La procedura per salvare/accedere ai dati e':
-        -)si salva il file nella forma [x1,y1,x2,y2,...,xnplanets,ynplanets]
-          per ogni riga  (vedi wrapevery per IO.writefile)
-        -)con wrapevery = 2 si ricostruisce la matrice out in
-            out[nrows,nplanets,2].
-        -)per accedere alla posizione x dell'i-esimo pianeta al tempo k:
-            out[k,i,0]
+    Data on the file are read as a 2d list/array and wrapevery allows you
+    to load 3d lists/arrays as well by reshaping
+    E.g. Iterating N Markov chains for N_ITER iterations in a 3d space.
+    data.shape=(N_ITER, N, 3). Wrapevery works if data are saved in this way:
+        [(X,Y,Z)_1stchain, (X,Y,Z)_2ndchain, ... , (X,Y,Z)_Nthchain ]1stiter
+        [(X,Y,Z)_1stchain, (X,Y,Z)_2ndchain, ... , (X,Y,Z)_Nthchain ]2nditer
+        ...
+        [(X,Y,Z)_1stchain, (X,Y,Z)_2ndchain, ... , (X,Y,Z)_Nthchain ]N_ITERthiter
+    Use IO.readfile to load it seamlessly!
     """
 
     try:
-        with open(nomefile, mode) as f:
+        with open(filename, mode) as f:
+            #Overriding places provided if they are not enough for good print
             if dtype=='e':
                 max_char=max(max_char,decimal_places+7)
             elif dtype=='f':
                 max_char=max(max_char,decimal_places+3)
-                # Questo da le cifre MINIME necessarie, cioe' se il numero e'
-                # in (-10, 10)! Meglio usare 'e' se non si e' sicuri
 
             try:
                 import numpy as np
             except ImportError:
                 print "Could not load numpy module"
 
-            wrapevery=None        #Parametro per capire se salvare matrice 3d
-            if np.array(dati).ndim==1:  #per salvare anche matrici 1d
+            wrapevery=None        #Parameter needed to save rank=3 arrays
+            if np.array(dati).ndim==1:  #To save rank=1
                 dati=[dati]
-            elif np.array(dati).ndim==3:   #Per salvare anche matrici 3d
+            elif np.array(dati).ndim==3:   #To save rank=3
                 wrapevery=np.array(dati).shape[-1]
 
-
-            if main_comment is not None:    #stampa commento principale
+            #Print main comment
+            if main_comment is not None:
                 stringa=''
                 for i in range(len(main_comment)):
                     stringa+='='
@@ -303,12 +305,12 @@ def writefile(nomefile,  dati, max_char=11, decimal_places=8, delimiter='   ',
                 f.write("%s%s\n" %(comments[0],main_comment))
                 f.write("%s%s\n\n" %(comments[0],stringa))
 
-            #Serve per lasciare un commento che stiamo salvando un array3d
+            #Wrapevery comment to let IO.readfile know that rank=3
             if wrapevery is not None:
                 f.write("%1s wrapevery = %i\n" %(comments[0],wrapevery))
                 dati=np.array(dati).reshape(len(dati),-1)
 
-            #Serve per generare label automatiche (con poca fantasia in ASCII)
+            #Generate automatic labels (uscing ASCII, not so smart)
             if labels==True:
                 if wrapevery is not None:
                     if len(dati[0])/wrapevery <= 26:
@@ -335,7 +337,9 @@ def writefile(nomefile,  dati, max_char=11, decimal_places=8, delimiter='   ',
                     f.write("%*s%s" %(caratteri, labels[i][:caratteri], delimiter))
                 f.write("\n")
             flag=0
-            delim=delimiter #Serve dopo altrimenti stampo delim a fine riga
+
+            #Needed later to avoid printing delimiter at the end of the line
+            delim=delimiter
             for i in range(len(dati)):
                 if row_comment:
                     if len(dati)!=len(dati[0]):
@@ -343,8 +347,8 @@ def writefile(nomefile,  dati, max_char=11, decimal_places=8, delimiter='   ',
                         return
                     f.write("%*s%s" %(caratteri, labels[i][:caratteri], delimiter))
                 for j in range(len(dati[i])):
-                    if j==len(dati[i])-1:   #altrimenti stampa delimiter anche
-                                            #a fine riga
+                    #Needed to avoid printing delimiter at the end of the line
+                    if j==len(dati[i])-1:
                         delim=''
 
                     if labels is not None and j==0:
@@ -366,49 +370,25 @@ def writefile(nomefile,  dati, max_char=11, decimal_places=8, delimiter='   ',
         if flag==1:
             print "Bad defined dtype. Switched to float format"
     except IOError:
-        print "Could not open file: %s" %nomefile
-
-
-def less(nomefile):
-    """
-    Funzione per guardare rapidamente il file da caricare
-
-    Parameters
-    ---------
-    nomefile : string
-        Nome del file sul quale salvare i dati e.g. 'output.txt'
-
-    Returns
-    -------
-    out : list
-        Lista (1d) che contiene le righe del file lette
-
-    """
-
-    try:
-        with open(nomefile, 'r') as f:
-            out=f.readlines()
-        return out
-    except IOError:
-        print "Could not open file: %s" %nomefile
+        print "Could not open file: %s" %filename
 
 def show_matrix(matrix, prec=0, row_index=False):
     """
-    Funzione per stampare in modo formattato una matrice. Attenzione, funziona
-    in modo formattato soltanto se tutti i valori della matrici occupano lo
-    stesso numero di cifre (da aggiornare)
+    Print nicely a matrix on screen. Made to print connection matrices
+    Ignore this, just use numpy instead...
+    This works well only if all values of the matrix need the same number of
+    places
 
     Parameters
     ----------
     matrix : list
-        Lista(2d) da stampare a schermo in modo formattato
+        Matrix to print in a formatted way on screen
 
     prec : float, optional
-        Ultima cifra significativa di precisione. E.g. 1E-4
+        last digit of precision i.e. 1E-4
 
     row_index : bool, optional
-        Mettere True per stampare l'indice della riga a inizio riga, False
-        altrimenti
+        Set True if you want to print i at the beginning of the line
     """
 
     try:
@@ -435,7 +415,7 @@ def show_matrix(matrix, prec=0, row_index=False):
                 if i==-1:
                     lettera = " "
                 else:
-                    if row_index:  #Se voglio stampare i a inizio riga
+                    if row_index: 
                         lettera = str(i+1)
                     else:
                         lettera = lettere[i]
